@@ -79,6 +79,8 @@ class Lexer:
     re_Identifier = re.compile(r'[_A-Za-z][_A-Za-z0-9]*')
     re_number = re.compile(r"0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?([pP][+\-]?[0-9]+)?|"
                            r"[0-9]*(\.[0-9]*)?([eE][+\-]?[0-9]+)?")
+    re_opening_long_bracket = re.compile(r'\[=*\[')
+    re_short_string = re.compile(r"(?s)('(\\\\|\\'|\\\n|\\z\s*|[^'\n])*')|(\"(\\\\|\\\"|\\\n|\\z\s*|[^\"\n])*\")")
 
     keywords_tokens = {
         "and":      TokenKind.OP_AND,
@@ -250,6 +252,8 @@ class Lexer:
     def scan_number(self):
         token = self.re_match(self.re_number)
         self.move_point(len(token))
+        print("get number: ")
+        print(eval(token))
         return Token(TokenKind.NUMBER, self.cur_line, token)
     
     def re_match(self, pattern):
@@ -264,11 +268,98 @@ class Lexer:
         self.move_point(len(token))
         return Token(TokenKind.IDENTIFIER, self.cur_line, token)
 
+    def skip_sep(self, sep):
+        count = 0
+        while self.chunk[self.cur_pos] == sep:
+            self.move_point(1)
+            count = count + 1
+        return count
+
+    # [=*[]=*]
     def scan_long_string(self):
-        return Token(TokenKind.STRING, self.cur_line, "")
+        self.move_point(1)
+        sep_num = self.skip_sep('=')
+        if self.chunk[self.cur_pos] != '[':
+            raise Exception("invalid long string delimiter near '%s'"%('['+'='*sep_num))
+        self.move_point(1)
+        token = ''
+        is_finish = False
+        while not self.is_chunk_end():
+            if self.chunk[self.cur_pos] == ']':
+                self.move_point(1)
+                close_sep_num = self.skip_sep('=')
+                print("close_sep_num=%d"%(close_sep_num))
+                if close_sep_num == sep_num and self.chunk[self.cur_pos] == ']':
+                    self.move_point(1)
+                    is_finish = True
+                    print(token)
+                    break
+                token = token + ']'+'='*close_sep_num
+            elif self.chunk[self.cur_pos] in '\n\r':
+                self.cur_line = self.cur_line + 1
+                token = token + '\n'
+                self.move_point(1)
+            else:
+                token = token + self.chunk[self.cur_pos]
+                self.move_point(1)
+        if not is_finish:
+            print(token)
+            raise Exception('unfinished long string (starting at line %d) near <eof>'%(self.cur_line))
+        return Token(TokenKind.STRING, self.cur_line, token)
+
+
+    def scan_long_string_re(self):
+        opening_bracket = self.re_match(self.re_opening_long_bracket)
+        start_pos = self.chunk.find(opening_bracket, self.cur_pos)
+        if start_pos == -1:
+            raise Exception('unreachable')
+        closing_bracket = opening_bracket.replace('[', ']')
+        end_pos = self.chunk.find(closing_bracket, self.cur_pos)
+        if end_pos == -1:
+            raise Exception('unreachable')
+        self.move_point(end_pos-start_pos+len(closing_bracket))
+        start_pos = start_pos + len(opening_bracket)
+        return Token(TokenKind.STRING, self.cur_line,  self.chunk[start_pos:end_pos])
 
     def scan_short_string(self):
-        return Token(TokenKind.STRING, self.cur_line, "")
+        begin_c = self.chunk[self.cur_pos]
+        self.move_point(1)
+        is_finish = False
+        token = ''
+        esc_table = {'a': '\a', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'v': '\v', '\\': '\\', '"': '"', "'": "'"}
+        while not self.is_chunk_end():
+            if self.chunk[self.cur_pos] == begin_c:
+                is_finish = True
+                self.move_point(1)
+                break
+            elif self.chunk[self.cur_pos] in '\r\n':
+                raise Exception("unfinished string near '%s'"%(token))
+            elif self.chunk[self.cur_pos] == '\\':
+                self.move_point(1)
+                if self.chunk[self.cur_pos] in esc_table:
+                    token = token + esc_table[self.chunk[self.cur_pos]]
+                    self.move_point(1)
+                elif self.chunk[self.cur_pos] == 'x':
+                    pass
+                elif self.chunk[self.cur_pos] == 'u':
+                    pass
+                elif self.chunk[self.cur_pos] in '\n\r':
+                    self.cur_line = self.cur_line + 1
+                    token = token + '\n'
+                else:
+                    raise Exception('invalid escape sequence')
+            else:
+                token = token + self.chunk[self.cur_pos]
+                self.move_point(1)
+        if not is_finish:
+                raise Exception('unfinished long string (starting at line %d) near <eof>'%(self.cur_line))
+        return Token(TokenKind.STRING, self.cur_line, token)
+
+    def scan_short_string_re(self):
+        short_string = self.re_match(self.re_short_string)
+        self.move_point(len(short_string))
+        short_string = short_string[1:-1]
+        return Token(TokenKind.STRING, self.cur_line, short_string)
 
     def move_point(self, step=1):
         self.cur_pos = self.cur_pos + step

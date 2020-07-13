@@ -1,7 +1,13 @@
 import lexer
 
 src_code = """
-3   345   0xff   0xBEBADA 3.0     3.1416     314.16e-2     0.31416E1     34e1
+[==[43ewrwe]==]
+[==[oiuewro7887787jkui[
+
+]=====]==]
+'ew\\noyy'
+"owueoru'"
+3   345   0xff   0xBEBADA 3.0     3.1416     314.16e-2     0.31416E1     34e1  .3145
 ; . .  ... |
 print(...)
 <<
