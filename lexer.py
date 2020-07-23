@@ -224,13 +224,17 @@ class Lexer:
         elif self.isdigit(c):
             return self.scan_number()
         elif c == '_' or c.isalpha():
-            return self.scan_identifier()
+            token = self.scan_identifier()
+            if token.data in self.keywords_tokens:
+                return Token(self.keywords_tokens[token.data], self.cur_line, token.data)
+            return token
         else:
             raise Exception("unexpected symbol near %s" % c)
 
     def skip_white_spaces(self):
         while not self.is_chunk_end():
             if self.is_start_with('--'):
+                self.move_point(2)
                 self.skip_comment()
             elif self.is_start_with('\r\n') or self.is_start_with('\n\r'):
                 self.move_point(2)
@@ -242,6 +246,18 @@ class Lexer:
                 self.move_point(1)
             else:
                 break
+
+    def skip_comment(self):
+        if self.chunk[self.cur_pos] == '[':
+            token = self.scan_long_string()
+        else:
+            while not self.is_chunk_end():
+                if self.chunk[self.cur_pos] in '\n\r':
+                    self.cur_line = self.cur_line + 1
+                    self.move_point(1)
+                    break
+                else:
+                    self.move_point(1)
 
     def is_chunk_end(self):
         return self.cur_pos >= len(self.chunk)
@@ -288,11 +304,9 @@ class Lexer:
             if self.chunk[self.cur_pos] == ']':
                 self.move_point(1)
                 close_sep_num = self.skip_sep('=')
-                print("close_sep_num=%d"%(close_sep_num))
                 if close_sep_num == sep_num and self.chunk[self.cur_pos] == ']':
                     self.move_point(1)
                     is_finish = True
-                    print(token)
                     break
                 token = token + ']'+'='*close_sep_num
             elif self.chunk[self.cur_pos] in '\n\r':
@@ -303,7 +317,6 @@ class Lexer:
                 token = token + self.chunk[self.cur_pos]
                 self.move_point(1)
         if not is_finish:
-            print(token)
             raise Exception('unfinished long string (starting at line %d) near <eof>'%(self.cur_line))
         return Token(TokenKind.STRING, self.cur_line, token)
 

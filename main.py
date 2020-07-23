@@ -1,28 +1,22 @@
 import lexer
+import parser
 
 src_code = """
-[==[43ewrwe]==]
-[==[oiuewro7887787jkui[
-
-]=====]==]
-'ew\\noyy'
-"owueoru'"
-3   345   0xff   0xBEBADA 3.0     3.1416     314.16e-2     0.31416E1     34e1  .3145
-; . .  ... |
-print(...)
-<<
->>
+::label::;
+break;
+::sdfs::
 """
-"""
-print('"你是谁！"')
-3   345   0xff   0xBEBADA 3.0     3.1416     314.16e-2     0.31416E1     34e1
-0x0.1E 
-"""
-lex = lexer.Lexer(src_code, '11')
-token = lex.next_token()
-while token.kind != lexer.TokenKind.EOF:
-    print(token)
-    token = lex.next_token()
+# test_lua = r'/Users/qinggang/PersonalData/open-src/xmake/xmake/core/main.lua'
+# with open(test_lua, 'r') as f:
+#     src_code = f.read()
+lex = lexer.Lexer(src_code, 'main.lua')
+# token = lex.next_token()
+# while token.kind != lexer.TokenKind.EOF:
+#     print(token)
+#     token = lex.next_token()
+parser = parser.Parser(lex)
+ast = parser.parse()
+print(ast)
 #with open('test/factorial.lua') as f:
 #    src_code = f.read()
 #for token in lua_lexer.lexer(src_code):
