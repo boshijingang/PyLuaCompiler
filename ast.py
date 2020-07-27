@@ -64,3 +64,8 @@ class AssignStat(AstNode):
         super().__init__(name)
         self.var_list = var_list
         self.exp_list = exp_list
+
+class RetStat(AstNode):
+    def __init__(self, exp_list, name = 'ret_stat'):
+        super().__init__(name)
+        self.exp_list = exp_list

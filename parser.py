@@ -1,10 +1,35 @@
 import lexer
 import ast
 
+
 class Parser:
-    block_end_tokens = [lexer.TokenKind.KW_RETURN, lexer.TokenKind.EOF, 
-                                         lexer.TokenKind.KW_END, lexer.TokenKind.KW_ELSE,
-                                         lexer.TokenKind.KW_ELSEIF, lexer.TokenKind.KW_UNTIL]
+    block_end_tokens = [lexer.TokenKind.KW_RETURN, lexer.TokenKind.EOF,
+                        lexer.TokenKind.KW_END, lexer.TokenKind.KW_ELSE,
+                        lexer.TokenKind.KW_ELSEIF, lexer.TokenKind.KW_UNTIL]
+    priority_table = {
+        lexer.TokenKind.OP_ADD: {left: 10, right: 10},  # +
+        lexer.TokenKind.OP_SUB: {left: 10, right: 10},  # -
+        lexer.TokenKind.OP_MUL: {left: 11, right: 11},  # *
+        lexer.TokenKind.OP_MOD: {left: 11, right: 11},  # %
+        lexer.TokenKind.OP_DIV: {left: 11, right: 11},  # /
+        lexer.TokenKind.OP_IDIV: {left: 11, right: 11},  # //
+        lexer.TokenKind.OP_POW: {left: 14, right: 13},  # ^
+        lexer.TokenKind.OP_BAND: {left: 6, right: 6},  # &
+        lexer.TokenKind.OP_BOR: {left: 4, right: 4},  # |
+        lexer.TokenKind.OP_BNOT: {left: 5, right: 5},  # ~
+        lexer.TokenKind.OP_SHL: {left: 7, right: 7},  # <<
+        lexer.TokenKind.OP_SHR: {left: 7, right: 7},  # >>
+        lexer.TokenKind.OP_CONCAT: {left: 9, right: 8},  # ..
+        lexer.TokenKind.OP_EQ: {left: 3, right: 3},  # ==
+        lexer.TokenKind.OP_LE: {left: 3, right: 3},  # <=
+        lexer.TokenKind.OP_LT: {left: 3, right: 3},  # <
+        lexer.TokenKind.OP_NE: {left: 3, right: 3},  # ~=
+        lexer.TokenKind.OP_GT: {left: 3, right: 3},  # >
+        lexer.TokenKind.OP_GE: {left: 3, right: 3},  # >=
+        lexer.TokenKind.OP_AND: {left: 2, right: 2},  # and
+        lexer.TokenKind.OP_OR: {left: 1, right: 1},  # or
+    }
+    unary_priority = 12
 
     def __init__(self, lex):
         self.lex = lex
@@ -13,6 +38,28 @@ class Parser:
         block = self.parse_block()
         self.lex.next_token_of_kind(lexer.TokenKind.EOF)
         return block
+
+    # explist ::= exp {‘,’ exp}
+    def parse_exp_list(self):
+        exp_list = []
+        exp_list.append(self.parse_exp())
+        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            exp_list.append(self.parse_exp())
+        return exp_list
+
+    # exp ::= (simpleexp | unop exp) {binop exp}
+    # simpleexp ::= nil | false | true | Numeral | LiteralString | ‘...’ | functiondef | prefixexp | tableconstructor
+    def parse_exp(self):
+        pass
+
+    # retstat ::= return [explist] [‘;’]
+    def parse_retstat(self):
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_RETURN)
+        exp_list = []
+        token = self.lex.look_ahead()
+        if not self.is_block_end(token.kind) and token.kind != lexer.TokenKind.SEP_SEMI:
+            exp_list = self.parse_exp_list()
+        return ast.RetStat(exp_list)
 
     # block ::= {stat} [retstat]
     def parse_block(self):
@@ -34,7 +81,7 @@ class Parser:
         block = self.parse_block()
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
         return ast.DoStat(block)
-    
+
     def parse_exp(self):
         pass
 
@@ -45,7 +92,7 @@ class Parser:
         block = self.parse_block()
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
         return ast.WhileStat(exp, block)
-    
+
     def parse_repeat_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_REPEAT)
         block = self.parse_block()
@@ -73,7 +120,7 @@ class Parser:
             block_list.append(self.parse_block())
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
         return ast.IfStat(exp_list, block_list)
-    
+
     def parse_for_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_FOR)
         name = self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER)
@@ -81,12 +128,26 @@ class Parser:
             return self.finish_for_num_stat(name)
         else:
             return self.finish_for_in_stat(name)
-        
+
     def parse_func_def_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_FUNCTION)
         func_name_exp = self.parse_func_name_exp()
         func_body_exp = self.parse_func_body_exp()
         return ast.AssignStat([func_name_exp], [func_body_exp])
+
+    def parse_local_def_stat(self):
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_LOCAL)
+        if self.lex.look_ahead().kind == lexer.TokenKind.KW_FUNCTION:
+            return self.parse_local_func_def_stat()
+        else:
+            return self.parse_local_var_decl_stat()
+
+    def parse_assign_or_func_call_stat(self):
+        exp = parse_prefixexp()
+        if isinstance(exp, ast.FunctionCallExp):
+            return exp
+        else:
+            return finsh_assign_stat(exp)
 
     """
     stat ::=  ‘;’ |
@@ -105,6 +166,7 @@ class Parser:
         varlist ‘=’ explist |
         functioncall 
     """
+
     def parse_stat(self):
         token = self.lex.look_ahead()
         if token.kind == lexer.TokenKind.SEP_SEMI:
@@ -117,7 +179,20 @@ class Parser:
             return self.parse_goto_stat()
         elif token.kind == lexer.TokenKind.KW_DO:
             return self.parse_do_stat()
-
+        elif token.kind == lexer.TokenKind.KW_WHILE:
+            return self.parse_while_stat()
+        elif token.kind == lexer.TokenKind.KW_REPEAT:
+            return self.parse_repeat_stat()
+        elif token.kind == lexer.TokenKind.KW_IF:
+            return self.parse_if_stat()
+        elif token.kind == lexer.TokenKind.KW_FOR:
+            return self.parse_for_stat()
+        elif token.kind == lexer.TokenKind.KW_FUNCTION:
+            return self.parse_func_def_stat()
+        elif token.kind == lexer.TokenKind.KW_LOCAL:
+            return self.parse_local_def_stat()
+        else:
+            return self.parse_assign_or_func_call_stat()
 
     def parse_empty_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.SEP_SEMI)
