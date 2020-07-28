@@ -69,3 +69,29 @@ class RetStat(AstNode):
     def __init__(self, exp_list, name = 'ret_stat'):
         super().__init__(name)
         self.exp_list = exp_list
+
+class BinopExp(AstNode):
+    def __init__(self, op_left, op_right, binop, name = 'binop_exp'):
+        super().__init__(name)
+        self.op_left = op_left
+        self.op_right = op_right
+        self.binop = binop
+
+class UnopExp(AstNode):
+    def __init__(self, op_num, unop, name = 'unop_exp'):
+        super().__init__(name)
+        self.op_num = op_num
+        self.unop = unop
+
+class NilExp(AstNode):
+    def __init__(self, name = 'nil_exp'):
+        super().__init__(name)
+
+class BoolConstExp(AstNode):
+    def __init__(self, bool_val, name = 'bool__constant_exp'):
+        super().__init__(name)
+        self.bool_val = bool_val
+
+class VarargExp(AstNode):
+    def __init__(self, name = 'vararg_exp'):
+        super().__init__(name)

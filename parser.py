@@ -29,6 +29,26 @@ class Parser:
         lexer.TokenKind.OP_AND: {left: 2, right: 2},  # and
         lexer.TokenKind.OP_OR: {left: 1, right: 1},  # or
     }
+
+    unops = [
+        lexer.TokenKind.OP_SUB, lexer.TokenKind.OP_NOT,
+        lexer.TokenKind.OP_LEN, lexer.TokenKind.OP_BNOT
+    ]
+
+    binops = [
+        lexer.TokenKind.OP_ADD, lexer.TokenKind.OP_SUB,
+        lexer.TokenKind.OP_MUL, lexer.TokenKind.OP_MOD,
+        lexer.TokenKind.OP_POW, lexer.TokenKind.OP_DIV,
+        lexer.TokenKind.OP_IDIV, lexer.TokenKind.OP_BAND,
+        lexer.TokenKind.OP_BOR, lexer.TokenKind.OP_BXOR,
+        lexer.TokenKind.OP_SHL, lexer.TokenKind.OP_SHR,
+        lexer.TokenKind.OP_CONCAT, lexer.TokenKind.OP_NE,
+        lexer.TokenKind.OP_EQ, lexer.TokenKind.OP_LT,
+        lexer.TokenKind.OP_LE, lexer.TokenKind.OP_GT,
+        lexer.TokenKind.OP_GE, lexer.TokenKind.OP_AND,
+        lexer.TokenKind.OP_OR
+    ]
+
     unary_priority = 12
 
     def __init__(self, lex):
@@ -42,15 +62,60 @@ class Parser:
     # explist ::= exp {‘,’ exp}
     def parse_exp_list(self):
         exp_list = []
-        exp_list.append(self.parse_exp())
+        exp_list.append(self.parse_exp(0)[1])
         while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
-            exp_list.append(self.parse_exp())
+            exp_list.append(self.parse_exp(0)[1])
         return exp_list
 
     # exp ::= (simpleexp | unop exp) {binop exp}
-    # simpleexp ::= nil | false | true | Numeral | LiteralString | ‘...’ | functiondef | prefixexp | tableconstructor
-    def parse_exp(self):
-        pass
+    def parse_exp(self, prev_priority):
+        token = self.lex.look_ahead()
+        if token.kind in self.unops:
+            self.lex.next_token()
+            op_left = ast.UnopExp(self.parse_exp(self.unary_priority)[1], token.kind)
+        else:
+            op_left = self.parse_simple_exp()
+        bin_op = self.lex.look_ahead().kind
+        while bin_op in self.binops and self.priority_table[bin_op].left > prev_priority:
+            bin_op, op_left = self.parse_binop_exp(op_left, self.priority_table[bin_op].right)
+        return bin_op, op_left
+
+    # simpleexp ::= nil | false | true | Numeral | LiteralString | ‘...’ | 
+    #                           functiondef | prefixexp | tableconstructor
+    def parse_simple_exp(self):
+        look_token = self.lex.look_ahead()
+        if look_token.kind == lexer.TokenKind.KW_NIL:
+            self.lex.next_token()
+            return ast.NilExp()
+        elif look_token.kind == lexer.TokenKind.KW_FALSE:
+            self.lex.next_token()
+            return ast.BoolConstExp(False)
+        elif look_token.kind == lexer.TokenKind.KW_TRUE:
+            self.lex.next_token()
+            return ast.BoolConstExp(True)
+        elif look_token.kind == lexer.TokenKind.NUMBER:
+            self.lex.next_token()
+            return self.parse_number_exp()
+        elif look_token.kind == lexer.TokenKind.STRING:
+            self.lex.next_token()
+            return ast.StringExp(look_token.data)
+        elif look_token.kind == lexer.TokenKind.VARARG:
+            self.lex.next_token()
+            return ast.VarargExp()
+        elif look_token.kind == lexer.TokenKind.KW_FUNCTION:
+            return self.parse_func_def_exp()
+        elif look_token.kind == lexer.TokenKind.KW_SEP_LCURLY:
+            return self.parse_table_constructor_exp()
+        else:
+            return self.parse_prefix_exp()
+
+    # binop exp
+    def parse_binop_exp(self, op_left, prev_priority):
+        token = self.lex.next_token()
+        if token.kind not in self.binops:
+           raise Exception("syntax error near '%s'" % token)
+        bin_op, op_right = self.parse_exp(prev_priority)
+        return bin_op, ast.BinopExp(op_left, op_right, token.kind)
 
     # retstat ::= return [explist] [‘;’]
     def parse_retstat(self):
