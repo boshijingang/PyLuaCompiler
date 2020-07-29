@@ -7,27 +7,27 @@ class Parser:
                         lexer.TokenKind.KW_END, lexer.TokenKind.KW_ELSE,
                         lexer.TokenKind.KW_ELSEIF, lexer.TokenKind.KW_UNTIL]
     priority_table = {
-        lexer.TokenKind.OP_ADD: {left: 10, right: 10},  # +
-        lexer.TokenKind.OP_SUB: {left: 10, right: 10},  # -
-        lexer.TokenKind.OP_MUL: {left: 11, right: 11},  # *
-        lexer.TokenKind.OP_MOD: {left: 11, right: 11},  # %
-        lexer.TokenKind.OP_DIV: {left: 11, right: 11},  # /
-        lexer.TokenKind.OP_IDIV: {left: 11, right: 11},  # //
-        lexer.TokenKind.OP_POW: {left: 14, right: 13},  # ^
-        lexer.TokenKind.OP_BAND: {left: 6, right: 6},  # &
-        lexer.TokenKind.OP_BOR: {left: 4, right: 4},  # |
-        lexer.TokenKind.OP_BNOT: {left: 5, right: 5},  # ~
-        lexer.TokenKind.OP_SHL: {left: 7, right: 7},  # <<
-        lexer.TokenKind.OP_SHR: {left: 7, right: 7},  # >>
-        lexer.TokenKind.OP_CONCAT: {left: 9, right: 8},  # ..
-        lexer.TokenKind.OP_EQ: {left: 3, right: 3},  # ==
-        lexer.TokenKind.OP_LE: {left: 3, right: 3},  # <=
-        lexer.TokenKind.OP_LT: {left: 3, right: 3},  # <
-        lexer.TokenKind.OP_NE: {left: 3, right: 3},  # ~=
-        lexer.TokenKind.OP_GT: {left: 3, right: 3},  # >
-        lexer.TokenKind.OP_GE: {left: 3, right: 3},  # >=
-        lexer.TokenKind.OP_AND: {left: 2, right: 2},  # and
-        lexer.TokenKind.OP_OR: {left: 1, right: 1},  # or
+        lexer.TokenKind.OP_ADD: {'left': 10, 'right': 10},  # +
+        lexer.TokenKind.OP_SUB: {'left': 10, 'right': 10},  # -
+        lexer.TokenKind.OP_MUL: {'left': 11, 'right': 11},  # *
+        lexer.TokenKind.OP_MOD: {'left': 11, 'right': 11},  # %
+        lexer.TokenKind.OP_DIV: {'left': 11, 'right': 11},  # /
+        lexer.TokenKind.OP_IDIV: {'left': 11, 'right': 11},  # //
+        lexer.TokenKind.OP_POW: {'left': 14, 'right': 13},  # ^
+        lexer.TokenKind.OP_BAND: {'left': 6, 'right': 6},  # &
+        lexer.TokenKind.OP_BOR: {'left': 4, 'right': 4},  # |
+        lexer.TokenKind.OP_BNOT: {'left': 5, 'right': 5},  # ~
+        lexer.TokenKind.OP_SHL: {'left': 7, 'right': 7},  # <<
+        lexer.TokenKind.OP_SHR: {'left': 7, 'right': 7},  # >>
+        lexer.TokenKind.OP_CONCAT: {'left': 9, 'right': 8},  # ..
+        lexer.TokenKind.OP_EQ: {'left': 3, 'right': 3},  # ==
+        lexer.TokenKind.OP_LE: {'left': 3, 'right': 3},  # <=
+        lexer.TokenKind.OP_LT: {'left': 3, 'right': 3},  # <
+        lexer.TokenKind.OP_NE: {'left': 3, 'right': 3},  # ~=
+        lexer.TokenKind.OP_GT: {'left': 3, 'right': 3},  # >
+        lexer.TokenKind.OP_GE: {'left': 3, 'right': 3},  # >=
+        lexer.TokenKind.OP_AND: {'left': 2, 'right': 2},  # and
+        lexer.TokenKind.OP_OR: {'left': 1, 'right': 1},  # or
     }
 
     unops = [
@@ -128,9 +128,8 @@ class Parser:
 
     # block ::= {stat} [retstat]
     def parse_block(self):
-        block = ast.Block()
         stats = self.parse_stats()
-        block.append_stat(stats)
+        block = ast.Block(stats)
         if self.lex.look_ahead().kind == lexer.TokenKind.KW_RETURN:
             retstat = self.parse_retstat()
             block.append_stat(retstat)
@@ -147,12 +146,9 @@ class Parser:
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
         return ast.DoStat(block)
 
-    def parse_exp(self):
-        pass
-
     def parse_while_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_WHILE)
-        exp = self.parse_exp()
+        exp = self.parse_exp(0)[1]
         self.lex.next_token_of_kind(lexer.TokenKind.KW_DO)
         block = self.parse_block()
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
@@ -231,7 +227,6 @@ class Parser:
         varlist ‘=’ explist |
         functioncall 
     """
-
     def parse_stat(self):
         token = self.lex.look_ahead()
         if token.kind == lexer.TokenKind.SEP_SEMI:
@@ -261,11 +256,11 @@ class Parser:
 
     def parse_empty_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.SEP_SEMI)
-        return ast.EmptyStat
+        return ast.EmptyStat()
 
     def parse_break_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_BREAK)
-        return ast.BreakStat
+        return ast.BreakStat()
 
     def parse_label_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.SEP_LABEL)

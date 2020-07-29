@@ -3,20 +3,27 @@ class AstNode:
         self.name = name
 
     def __str__(self):
-        return '{%s}'%(self.name)
+        return '<%s>'%(self.name)
+    
+    def print(self, pre_num=0):
+        pre = "  " * pre_num
+        print(pre+str(self))
 
-class Block:
-    def __init__(self, stats=[]):
+class Block(AstNode):
+    def __init__(self, stats=[], name = 'block'):
+        super().__init__(name)
         self.stats = stats
-
-    def __str__(self):
-        ret =  '{block}'
+    
+    def print(self, pre_num=0):
+        pre = "  " * pre_num
+        print("%s"%(pre)+str(self))
+        print("%s{" % (pre))
         for it in self.stats:
-            ret = ret + '\n' + str(it)
-        return ret
+            it.print(pre_num+1)
+        print("%s}" % (pre))
 
     def append_stat(self, stat):
-        self.stats.extend(stat)
+        self.stats.append(stat)
 
 class EmptyStat(AstNode):
     def __init__(self, name = "empty_stat"):
@@ -46,6 +53,12 @@ class WhileStat(AstNode):
         super().__init__(name)
         self.exp = exp
         self.block = block
+    
+    def print(self, pre_num=0):
+        pre = "  " * pre_num
+        print("%s"%(pre)+str(self))
+        self.exp.print(pre_num+1)
+        self.block.print(pre_num+1)
 
 class RepeatStat(AstNode):
     def __init__(self, exp, block, name = 'repeat_stat'):
@@ -88,7 +101,7 @@ class NilExp(AstNode):
         super().__init__(name)
 
 class BoolConstExp(AstNode):
-    def __init__(self, bool_val, name = 'bool__constant_exp'):
+    def __init__(self, bool_val, name = 'bool_constant_exp'):
         super().__init__(name)
         self.bool_val = bool_val
 
