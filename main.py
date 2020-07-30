@@ -4,6 +4,7 @@ from parser import Parser
 def main():
     src_code = """
     while true do 
+        a = 3+3
         break
     end
     """

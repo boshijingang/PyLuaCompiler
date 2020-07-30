@@ -203,13 +203,65 @@ class Parser:
         else:
             return self.parse_local_var_decl_stat()
 
-    def parse_assign_or_func_call_stat(self):
-        exp = parse_prefixexp()
-        if isinstance(exp, ast.FunctionCallExp):
-            return exp
+    # var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name
+    # functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
+    # prefixexp ::= var | functioncall | ‘(’ exp ‘)’
+    # prefixexp ::=    prefixexp args 
+    #                         | prefixexp ‘:’ Name args  
+    #                         | prefixexp ‘[’ exp ‘]’
+    #                         | prefixexp ‘.’ Name
+    #                         | ‘(’ exp ‘)’ 
+    #                         | Name  
+    # args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
+    # tableconstructor ::= ‘{’ [fieldlist] ‘}’
+    def parse_prefix_exp(self):
+        look_token = self.lex.look_ahead()
+        if look_token.kind == lexer.TokenKind.SEP_LPAREN:
+            self.lex.next_token()
+            exp = self.parse_exp(0)[1]
+            self.lex.next_token_of_kind(lexer.TokenKind.SEP_LPAREN)
         else:
-            return finsh_assign_stat(exp)
+            name = self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER)
+            exp = ast.NameExp(name.data)
+        while True:
+            look_token = self.lex.look_ahead()
+            if look_token.kind == lexer.TokenKind.SEP_DOT:
+                self.lex.next_token()
+                idx_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER))
+                exp = ast.TableAccessExp(exp, idx_exp)
+            elif look_token.kind ==  lexer.TokenKind.SEP_COLON:
+                self.lex.next_token()
+                func_name_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER))
+                args_exp = self.parse_func_args()
+                exp = ast.FunctionCallExp(exp, func_name_exp, args_exp)
+            elif look_token.kind in [lexer.TokenKind.SEP_LPAREN, lexer.TokenKind.SEP_LCURLY, lexer.TokenKind.STRING]:
+                args_exp = self.parse_func_args()
+                exp = ast.FunctionCallExp(exp, None, args_exp)
+            elif look_token.kind == lexer.TokenKind.SEP_LBRACK:
+                self.lex.next_token()
+                idx_exp = self.parse_exp(0)[1]
+                exp = ast.TableAccessExp(exp, idx_exp)
+                self.lex.next_token_of_kind(lexer.TokenKind.SEP_RBRACK)
+            else:
+                break
+        return exp
 
+    # varlist ‘=’ explist
+    # functioncall
+    def parse_assign_or_func_call_stat(self):
+        exp = self.parse_prefix_exp()
+        look_token = self.lex.look_ahead()
+        if look_token.kind in [lexer.TokenKind.OP_ASSIGN, lexer.TokenKind.SEP_COMMA]:
+            return self.finsh_assign_stat(exp)
+        else:
+            return exp
+
+    # varlist ‘=’ explist
+    # varlist ::= var {‘,’ var}
+    # var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name
+    def finsh_assign_stat(self, first_var):
+        look_token = self.lex.look_ahead()
+        
     """
     stat ::=  ‘;’ |
         break |

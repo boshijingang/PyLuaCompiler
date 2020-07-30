@@ -108,3 +108,21 @@ class BoolConstExp(AstNode):
 class VarargExp(AstNode):
     def __init__(self, name = 'vararg_exp'):
         super().__init__(name)
+
+class NameExp(AstNode):
+    def __init__(self, id_name, name = 'name_exp'):
+        super().__init__(name)
+        self.name = id_name
+
+class TableAccessExp(AstNode):
+    def __init__(self, exp, idx_exp, name = 'table_access_exp'):
+        super().__init__(name)
+        self.exp = exp
+        self.idx_exp = idx_exp
+
+class FunctionCallExp(AstNode):
+    def __init__(self, prefix_exp, func_name_exp, args_exp, name = 'function_call_exp'):
+        super().__init__(name)
+        self.prefix_exp = prefix_exp
+        self.func_name_exp = func_name_exp
+        self.args_exp = args_exp
