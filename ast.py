@@ -82,6 +82,11 @@ class RetStat(AstNode):
     def __init__(self, exp_list, name = 'ret_stat'):
         super().__init__(name)
         self.exp_list = exp_list
+        
+class StringExp(AstNode):
+    def __init__(self, string, name = 'string_exp'):
+        super().__init__(name)
+        self.string = string
 
 class BinopExp(AstNode):
     def __init__(self, op_left, op_right, binop, name = 'binop_exp'):

@@ -64,6 +64,7 @@ class Parser:
         exp_list = []
         exp_list.append(self.parse_exp(0)[1])
         while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            self.lex.next_token()
             exp_list.append(self.parse_exp(0)[1])
         return exp_list
 
@@ -76,9 +77,24 @@ class Parser:
         else:
             op_left = self.parse_simple_exp()
         bin_op = self.lex.look_ahead().kind
-        while bin_op in self.binops and self.priority_table[bin_op].left > prev_priority:
-            bin_op, op_left = self.parse_binop_exp(op_left, self.priority_table[bin_op].right)
+        while bin_op in self.binops and self.priority_table[bin_op]['left'] > prev_priority:
+            bin_op, op_left = self.parse_binop_exp(op_left, self.priority_table[bin_op]['right'])
         return bin_op, op_left
+    
+    # args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
+    # tableconstructor ::= ‘{’ [fieldlist] ‘}’
+    def parse_func_args(self):
+        look_token = self.lex.look_ahead()
+        if look_token.kind == lexer.TokenKind.SEP_LPAREN:
+            self.lex.next_token()
+            if self.lex.look_ahead().kind != lexer.TokenKind.SEP_RPAREN:
+                exp_list = self.parse_exp_list()
+            self.lex.next_token_of_kind(lexer.TokenKind.SEP_RPAREN)
+        elif look_token.kind == lexer.TokenKind.SEP_LCURLY:
+            exp_list = [self.parse_table_constructor_exp()]
+        else:
+            exp_list = [ast.String(self.lex.next_token_of_kind(lexer.TokenKind.STRING)).data]
+        return exp_list
 
     # simpleexp ::= nil | false | true | Numeral | LiteralString | ‘...’ | 
     #                           functiondef | prefixexp | tableconstructor
@@ -104,7 +120,7 @@ class Parser:
             return ast.VarargExp()
         elif look_token.kind == lexer.TokenKind.KW_FUNCTION:
             return self.parse_func_def_exp()
-        elif look_token.kind == lexer.TokenKind.KW_SEP_LCURLY:
+        elif look_token.kind == lexer.TokenKind.SEP_LCURLY:
             return self.parse_table_constructor_exp()
         else:
             return self.parse_prefix_exp()
@@ -116,6 +132,9 @@ class Parser:
            raise Exception("syntax error near '%s'" % token)
         bin_op, op_right = self.parse_exp(prev_priority)
         return bin_op, ast.BinopExp(op_left, op_right, token.kind)
+
+    def parse_number_exp(self):
+        pass
 
     # retstat ::= return [explist] [‘;’]
     def parse_retstat(self):
@@ -256,12 +275,23 @@ class Parser:
         else:
             return exp
 
+    def check_var(self, exp):
+        if isinstance(exp, ast.TableAccessExp) or isinstance(exp, ast.NameExp):
+            return exp
+        raise Exception("syntax error near '%s'" % token)
+
     # varlist ‘=’ explist
     # varlist ::= var {‘,’ var}
     # var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name
     def finsh_assign_stat(self, first_var):
+        var_list = [first_var]
         look_token = self.lex.look_ahead()
-        
+        while look_token.kind == lexer.TokenKind.SEP_COMMA:
+            var_list.append(self.check_var(self.parse_prefix_exp()))
+        self.lex.next_token_of_kind(lexer.TokenKind.OP_ASSIGN)
+        exp_list = self.parse_exp_list()
+        return ast.AssignStat(var_list, exp_list)
+
     """
     stat ::=  ‘;’ |
         break |

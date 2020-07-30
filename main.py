@@ -5,6 +5,7 @@ def main():
     src_code = """
     while true do 
         a = 3+3
+        a.print(2, 3)
         break
     end
     """
