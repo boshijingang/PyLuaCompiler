@@ -4,7 +4,7 @@ from parser import Parser
 def main():
     src_code = """
     while true do 
-        a = 3+3
+        a = 3+3*5^3
         a.print(2, 3)
         break
     end

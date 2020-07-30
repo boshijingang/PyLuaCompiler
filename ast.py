@@ -78,11 +78,19 @@ class AssignStat(AstNode):
         self.var_list = var_list
         self.exp_list = exp_list
 
+    def print(self, pre_num=0):
+        pre = "  " * pre_num
+        print("%s"%(pre)+str(self))
+        for it in self.var_list:
+            it.print(pre_num+1)
+        for it in self.exp_list:
+            it.print(pre_num+1)
+
 class RetStat(AstNode):
     def __init__(self, exp_list, name = 'ret_stat'):
         super().__init__(name)
         self.exp_list = exp_list
-        
+
 class StringExp(AstNode):
     def __init__(self, string, name = 'string_exp'):
         super().__init__(name)
@@ -117,7 +125,7 @@ class VarargExp(AstNode):
 class NameExp(AstNode):
     def __init__(self, id_name, name = 'name_exp'):
         super().__init__(name)
-        self.name = id_name
+        self.id_name = id_name
 
 class TableAccessExp(AstNode):
     def __init__(self, exp, idx_exp, name = 'table_access_exp'):
