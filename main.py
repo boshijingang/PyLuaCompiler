@@ -3,11 +3,15 @@ from parser import Parser
 
 def main():
     src_code = """
-    while true do 
-        a = 3+3*5^3
-        a.print(2, 3)
+    while -3^6 do 
+        a = (3.3+3)*5^3;
+        b = '53535'..'34234'
+        c[54] = '34535'
+        b.print(2, 3)
+        d.c:print(2, 3)
         break
     end
+    return 2+3, 3, 5
     """
     # test_lua = r'/Users/qinggang/PersonalData/open-src/xmake/xmake/core/main.lua'
     # with open(test_lua, 'r') as f:

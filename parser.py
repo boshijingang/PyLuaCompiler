@@ -110,7 +110,6 @@ class Parser:
             self.lex.next_token()
             return ast.BoolConstExp(True)
         elif look_token.kind == lexer.TokenKind.NUMBER:
-            self.lex.next_token()
             return self.parse_number_exp()
         elif look_token.kind == lexer.TokenKind.STRING:
             self.lex.next_token()
@@ -134,7 +133,12 @@ class Parser:
         return bin_op, ast.BinopExp(op_left, op_right, token.kind)
 
     def parse_number_exp(self):
-        pass
+        token = self.lex.next_token_of_kind(lexer.TokenKind.NUMBER)
+        val = eval(token.data)
+        if isinstance(val, int):
+            return ast.IntegerExp(val)
+        else:
+            return ast.FloatExp(val)
 
     # retstat ::= return [explist] [‘;’]
     def parse_retstat(self):
@@ -238,7 +242,7 @@ class Parser:
         if look_token.kind == lexer.TokenKind.SEP_LPAREN:
             self.lex.next_token()
             exp = self.parse_exp(0)[1]
-            self.lex.next_token_of_kind(lexer.TokenKind.SEP_LPAREN)
+            self.lex.next_token_of_kind(lexer.TokenKind.SEP_RPAREN)
         else:
             name = self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER)
             exp = ast.NameExp(name.data)
@@ -246,16 +250,18 @@ class Parser:
             look_token = self.lex.look_ahead()
             if look_token.kind == lexer.TokenKind.SEP_DOT:
                 self.lex.next_token()
-                idx_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER))
+                idx_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
                 exp = ast.TableAccessExp(exp, idx_exp)
             elif look_token.kind ==  lexer.TokenKind.SEP_COLON:
                 self.lex.next_token()
-                func_name_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER))
-                args_exp = self.parse_func_args()
-                exp = ast.FunctionCallExp(exp, func_name_exp, args_exp)
+                args_exp = [exp]
+                prefix_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
+                exp = ast.TableAccessExp(exp, prefix_exp)
+                args_exp.extend(self.parse_func_args())
+                exp = ast.FunctionCallExp(exp, args_exp)
             elif look_token.kind in [lexer.TokenKind.SEP_LPAREN, lexer.TokenKind.SEP_LCURLY, lexer.TokenKind.STRING]:
                 args_exp = self.parse_func_args()
-                exp = ast.FunctionCallExp(exp, None, args_exp)
+                exp = ast.FunctionCallExp(exp, args_exp)
             elif look_token.kind == lexer.TokenKind.SEP_LBRACK:
                 self.lex.next_token()
                 idx_exp = self.parse_exp(0)[1]
@@ -272,8 +278,10 @@ class Parser:
         look_token = self.lex.look_ahead()
         if look_token.kind in [lexer.TokenKind.OP_ASSIGN, lexer.TokenKind.SEP_COMMA]:
             return self.finsh_assign_stat(exp)
-        else:
+        elif isinstance(exp, ast.FunctionCallExp):
             return exp
+        else:
+            raise Exception("syntax error near '%s'" % look_token)
 
     def check_var(self, exp):
         if isinstance(exp, ast.TableAccessExp) or isinstance(exp, ast.NameExp):
@@ -338,7 +346,6 @@ class Parser:
 
     def parse_empty_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.SEP_SEMI)
-        return ast.EmptyStat()
 
     def parse_break_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_BREAK)
@@ -354,7 +361,8 @@ class Parser:
         stats = []
         while not self.is_block_end(self.lex.look_ahead().kind):
             stat = self.parse_stat()
-            stats.append(stat)
+            if stat:
+                stats.append(stat)
         return stats
 
     def is_block_end(self, kind):

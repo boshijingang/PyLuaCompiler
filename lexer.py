@@ -268,8 +268,8 @@ class Lexer:
     def scan_number(self):
         token = self.re_match(self.re_number)
         self.move_point(len(token))
-        print("get number: ")
-        print(eval(token))
+        # print("get number: ")
+        # print(eval(token))
         return Token(TokenKind.NUMBER, self.cur_line, token)
     
     def re_match(self, pattern):
