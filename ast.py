@@ -82,6 +82,10 @@ class RepeatStat(AstNode):
         self.exp = exp
         self.block = block
 
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        self.exp.print(pre_num+1)
+        self.block.print(pre_num+1)
 
 class IfStat(AstNode):
     def __init__(self, exp_list, block_list, name='if_stat'):
@@ -89,6 +93,45 @@ class IfStat(AstNode):
         self.exp_list = exp_list
         self.block_list = block_list
 
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        for it in self.exp_list:
+            it.print(pre_num+1)
+        for it in self.block_list:
+            it.print(pre_num+1)
+
+class ForNumStat(AstNode):
+    def __init__(self, var_name, init_exp, limit_exp, step_exp, block, name = 'for_num_stat'):
+        super().__init__(name)
+        self.var_name = var_name
+        self.init_exp = init_exp
+        self.limit_exp = limit_exp
+        self.step_exp = step_exp
+        self.block = block
+    
+    def print(self, pre_num=0):
+        super().print(pre_num=pre_num)
+        self.var_name.print(pre_num+1)
+        self.init_exp.print(pre_num+1)
+        self.limit_exp.print(pre_num+1)
+        if self.step_exp:
+            self.step_exp.print(pre_num+1)
+        self.block.print(pre_num+1)
+
+class ForInStat(AstNode):
+    def __init__(self, name_list, exp_list, block, name = 'for_in_stat'):
+        super().__init__(name)
+        self.name_list = name_list
+        self.exp_list = exp_list
+        self.block = block
+    
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        for it in self.name_list:
+            it.print(pre_num+1)
+        for it in self.exp_list:
+            it.print(pre_num+1)
+        self.block.print(pre_num+1)
 
 class AssignStat(AstNode):
     def __init__(self, var_list, exp_list, name='assign_stat'):

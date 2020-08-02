@@ -4,7 +4,17 @@ from parser import Parser
 def main():
     src_code = """
     function b.a.c.d(bd, dc, ...)
-        print(2222)
+        if bd > 2 then
+            print(2222)
+        else
+            print(3333)
+        end
+        for a=2^4, i do
+            print("for_stat")
+        end
+        for a,b in 2+3, 35 do
+            print("for_in")
+        end
     end
 
     while -3^6 do 
@@ -15,6 +25,7 @@ def main():
         d.c:print(2, 3)
         break
     end
+    repeat print.print(3445) until a[323]
     return 2+3, 3, 5
     """
     # test_lua = r'/Users/qinggang/PersonalData/open-src/xmake/xmake/core/main.lua'

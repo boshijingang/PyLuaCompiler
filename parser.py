@@ -181,37 +181,63 @@ class Parser:
         self.lex.next_token_of_kind(lexer.TokenKind.KW_REPEAT)
         block = self.parse_block()
         self.lex.next_token_of_kind(lexer.TokenKind.KW_UNTIL)
-        exp = self.parse_exp()
+        exp = self.parse_exp(0)[1]
         return ast.RepeatStat(exp, block)
 
     def parse_if_stat(self):
         exp_list = []
         block_list = []
         self.lex.next_token_of_kind(lexer.TokenKind.KW_IF)
-        exp = self.parse_exp()
+        exp = self.parse_exp(0)[1]
         exp_list.append(exp)
         self.lex.next_token_of_kind(lexer.TokenKind.KW_THEN)
         block = self.parse_block()
         block_list.append(block)
         while self.lex.look_ahead().kind == lexer.TokenKind.KW_ELSEIF:
             self.lex.next_token_of_kind(lexer.TokenKind.KW_ELSEIF)
-            exp_list.append(self.parse_exp())
+            exp_list.append(self.parse_exp(0)[1])
             self.lex.next_token_of_kind(lexer.TokenKind.KW_THEN)
             block_list.append(self.parse_block())
         if self.lex.look_ahead().kind == lexer.TokenKind.KW_ELSE:
             self.lex.next_token_of_kind(lexer.TokenKind.KW_ELSE)
-            exp_list.append(ast.TrueExp)
+            exp_list.append(ast.BoolConstExp(True))
             block_list.append(self.parse_block())
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
         return ast.IfStat(exp_list, block_list)
 
     def parse_for_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_FOR)
-        name = self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER)
+        name = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
         if self.lex.look_ahead().kind == lexer.TokenKind.OP_ASSIGN:
             return self.finish_for_num_stat(name)
         else:
             return self.finish_for_in_stat(name)
+
+    def finish_for_num_stat(self, var):
+        self.lex.next_token_of_kind(lexer.TokenKind.OP_ASSIGN)
+        init_exp = self.parse_exp(0)[1]
+        self.lex.next_token_of_kind(lexer.TokenKind.SEP_COMMA)
+        limit_exp = self.parse_exp(0)[1]
+        step_exp = None
+        if self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            self.lex.next_token()
+            step_exp = self.parse_exp(0)[1]
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_DO)
+        block = self.parse_block()
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
+        return ast.ForNumStat(var, init_exp, limit_exp, step_exp, block)
+
+    def finish_for_in_stat(self, name):
+        name_list = [name]
+        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            self.lex.next_token()
+            name_list.append(ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_IN)
+        exp_list = self.parse_exp_list()
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_DO)
+        block = self.parse_block()
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
+        return ast.ForInStat(name_list, exp_list, block)
 
     def parse_func_def_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_FUNCTION)
