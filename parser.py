@@ -215,9 +215,55 @@ class Parser:
 
     def parse_func_def_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_FUNCTION)
-        func_name_exp = self.parse_func_name_exp()
-        func_body_exp = self.parse_func_body_exp()
+        func_name_exp, has_colon = self.parse_func_name_exp()
+        func_body_exp = self.parse_func_body_exp(has_colon)
         return ast.AssignStat([func_name_exp], [func_body_exp])
+
+    # parlist ::= namelist [‘,’ ‘...’] | ‘...’
+    # namelist ::= Name {‘,’ Name}
+    def parse_parlist(self):
+        parlist = []
+        is_var_arg = False
+        if self.lex.look_ahead().kind == lexer.TokenKind.SEP_RPAREN:
+            return parlist, is_var_arg
+        if self.lex.look_ahead().kind == lexer.TokenKind.VARARG:
+            is_var_arg = True
+            self.lex.next_token()
+            return parlist, is_var_arg
+        parlist.append(ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            self.lex.next_token()
+            if self.lex.look_ahead().kind == lexer.TokenKind.IDENTIFIER:
+                parlist.append(ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+            else:
+                self.lex.next_token_of_kind(lexer.TokenKind.VARARG)
+                is_var_arg = True
+                break
+        return parlist, is_var_arg
+
+    # funcbody ::= ‘(’ [parlist] ‘)’ block end
+    def parse_func_body_exp(self, has_colon):
+        self.lex.next_token_of_kind(lexer.TokenKind.SEP_LPAREN)
+        parlist, is_var_arg = self.parse_parlist()
+        self.lex.next_token_of_kind(lexer.TokenKind.SEP_RPAREN)
+        if has_colon:
+            parlist.insert(0, ast.StringExp('self'))
+        body = self.parse_block()
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
+        return ast.FunctionDefExp(parlist, is_var_arg, body)
+
+    # funcname ::= Name {‘.’ Name} [‘:’ Name]
+    def parse_func_name_exp(self):
+        has_colon = False
+        name_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
+        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_DOT:
+            self.lex.next_token()
+            name_exp = ast.TableAccessExp(name_exp, ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+        if self.lex.look_ahead().kind == lexer.TokenKind.SEP_COLON:
+            self.lex.next_token()
+            name_exp = ast.TableAccessExp(name_exp, ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+            has_colon = True
+        return name_exp, has_colon
 
     def parse_local_def_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_LOCAL)
@@ -250,13 +296,13 @@ class Parser:
             look_token = self.lex.look_ahead()
             if look_token.kind == lexer.TokenKind.SEP_DOT:
                 self.lex.next_token()
-                idx_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
+                idx_exp = ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
                 exp = ast.TableAccessExp(exp, idx_exp)
             elif look_token.kind ==  lexer.TokenKind.SEP_COLON:
                 self.lex.next_token()
                 args_exp = [exp]
-                prefix_exp = ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
-                exp = ast.TableAccessExp(exp, prefix_exp)
+                idx_exp = ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)
+                exp = ast.TableAccessExp(exp, idx_exp)
                 args_exp.extend(self.parse_func_args())
                 exp = ast.FunctionCallExp(exp, args_exp)
             elif look_token.kind in [lexer.TokenKind.SEP_LPAREN, lexer.TokenKind.SEP_LCURLY, lexer.TokenKind.STRING]:

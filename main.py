@@ -3,9 +3,13 @@ from parser import Parser
 
 def main():
     src_code = """
+    function b.a.c.d(bd, dc, ...)
+        print(2222)
+    end
+
     while -3^6 do 
         a = (3.3+3)*5^3;
-        b = '53535'..'34234'
+        b = '53535'..'34234'..'re64646'
         c[54] = '34535'
         b.print(2, 3)
         d.c:print(2, 3)

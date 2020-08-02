@@ -204,6 +204,19 @@ class FunctionCallExp(AstNode):
         for it in self.args_exp:
             it.print(pre_num+1)
 
+class FunctionDefExp(AstNode):
+    def __init__(self, parlist, is_var_arg, body, name = 'function_def_exp'):
+        super().__init__(name)
+        self.parlist = parlist
+        self.is_var_arg = is_var_arg
+        self.body = body
+    
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        for it in self.parlist:
+            it.print(pre_num+1)
+        self.body.print(pre_num+1)
+
 class IntegerExp(AstNode):
     def __init__(self, int_val, name = 'integer_exp'):
         super().__init__(name)
