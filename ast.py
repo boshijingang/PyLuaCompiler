@@ -63,6 +63,22 @@ class DoStat(AstNode):
         super().__init__(name)
         self.block = block
 
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        self.block.print(pre_num+1)
+
+class LocalDeclStat(AstNode):
+    def __init__(self, var_list, exp_list, name = 'local_decl_stat'):
+        super().__init__(name)
+        self.val_list = var_list
+        self.exp_list = exp_list
+
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        for it in self.val_list:
+            it.print(pre_num+1)
+        for it in self.exp_list:
+            it.print(pre_num+1)
 
 class WhileStat(AstNode):
     def __init__(self, exp, block, name='while_stat'):
@@ -234,6 +250,20 @@ class TableAccessExp(AstNode):
         self.exp.print(pre_num+1)
         self.idx_exp.print(pre_num+1)
 
+class TableConstructorExp(AstNode):
+    def __init__(self, key_list, val_list, name = 'table_constructor_exp'):
+        super().__init__(name)
+        self.key_list = key_list
+        self.val_list = val_list
+
+    def print(self, pre_num=0):
+        super().print(pre_num)
+        print(super().get_prefix(pre_num+1)+'<key_list>')
+        for it in self.key_list:
+            it.print(pre_num+2)
+        print(super().get_prefix(pre_num+1)+'<val_list>')
+        for it in self.val_list:
+            it.print(pre_num+2)
 
 class FunctionCallExp(AstNode):
     def __init__(self, prefix_exp, args_exp, name='function_call_exp'):

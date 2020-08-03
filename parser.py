@@ -85,6 +85,7 @@ class Parser:
     # tableconstructor ::= ‘{’ [fieldlist] ‘}’
     def parse_func_args(self):
         look_token = self.lex.look_ahead()
+        exp_list = []
         if look_token.kind == lexer.TokenKind.SEP_LPAREN:
             self.lex.next_token()
             if self.lex.look_ahead().kind != lexer.TokenKind.SEP_RPAREN:
@@ -123,6 +124,57 @@ class Parser:
             return self.parse_table_constructor_exp()
         else:
             return self.parse_prefix_exp()
+
+    def parse_func_def_exp(self):
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_FUNCTION)
+        func_body_exp = self.parse_func_body_exp(False)
+        return func_body_exp
+
+    # tableconstructor ::= ‘{’ [fieldlist] ‘}’
+    def parse_table_constructor_exp(self):
+        self.lex.next_token_of_kind(lexer.TokenKind.SEP_LCURLY)
+        if self.lex.look_ahead().kind != lexer.TokenKind.SEP_RCURLY:
+            key_list, val_list = self.parse_field_list()
+        else:
+            key_list = []
+            val_list = []
+        self.lex.next_token_of_kind(lexer.TokenKind.SEP_RCURLY)
+        return ast.TableConstructorExp(key_list, val_list)
+
+    # fieldlist ::= field {fieldsep field} [fieldsep]
+	# fieldsep ::= ‘,’ | ‘;’
+    def parse_field_list(self):
+        key, val = self.parse_field()
+        key_list = [key]
+        val_list = [val]
+        while self.lex.look_ahead().kind in [lexer.TokenKind.SEP_COMMA, lexer.TokenKind.SEP_SEMI]:
+            self.lex.next_token()
+            if self.lex.look_ahead().kind == lexer.TokenKind.SEP_RCURLY:
+                break
+            else:
+                key, val = self.parse_field()
+                key_list.append(key)
+                val_list.append(val)
+        return key_list, val_list
+
+    # field ::= ‘[’ exp ‘]’ ‘=’ exp | Name ‘=’ exp | exp
+    def parse_field(self):
+        if self.lex.look_ahead().kind == lexer.TokenKind.SEP_LBRACK:
+            self.lex.next_token()
+            key_exp = self.parse_exp(0)[1]
+            self.lex.next_token_of_kind(lexer.TokenKind.SEP_RBRACK)
+            self.lex.next_token_of_kind(lexer.TokenKind.OP_ASSIGN)
+            val_exp = self.parse_exp(0)[1]
+            return key_exp, val_exp
+        exp = self.parse_exp(0)[1]
+        if self.lex.look_ahead().kind == lexer.TokenKind.OP_ASSIGN:
+            if not isinstance(exp, ast.NameExp):
+                raise Exception("syntax error near '%s'" % token)
+            self.lex.next_token()
+            key_exp = ast.StringExp(exp.id_name)
+            val_exp = self.parse_exp(0)[1]
+            return key_exp, val_exp
+        return ast.NilExp(), exp
 
     # binop exp
     def parse_binop_exp(self, op_left, prev_priority):
@@ -228,16 +280,13 @@ class Parser:
         return ast.ForNumStat(var, init_exp, limit_exp, step_exp, block)
 
     def finish_for_in_stat(self, name):
-        name_list = [name]
-        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
-            self.lex.next_token()
-            name_list.append(ast.NameExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+        var_list = self.parse_name_list(name)
         self.lex.next_token_of_kind(lexer.TokenKind.KW_IN)
         exp_list = self.parse_exp_list()
         self.lex.next_token_of_kind(lexer.TokenKind.KW_DO)
         block = self.parse_block()
         self.lex.next_token_of_kind(lexer.TokenKind.KW_END)
-        return ast.ForInStat(name_list, exp_list, block)
+        return ast.ForInStat(var_list, exp_list, block)
 
     def parse_func_def_stat(self):
         self.lex.next_token_of_kind(lexer.TokenKind.KW_FUNCTION)
@@ -297,6 +346,33 @@ class Parser:
             return self.parse_local_func_def_stat()
         else:
             return self.parse_local_var_decl_stat()
+    
+    # namelist ::= Name {‘,’ Name}
+    def parse_name_list(self, name=None):
+        if name:
+            var_list = [name]
+        else:
+            var_list = [ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)]
+        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            self.lex.next_token()
+            var_list.append(ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data))
+        return var_list
+
+    # local function Name funcbody
+    def parse_local_func_def_stat(self):
+        self.lex.next_token_of_kind(lexer.TokenKind.KW_FUNCTION)
+        var_list = [ast.StringExp(self.lex.next_token_of_kind(lexer.TokenKind.IDENTIFIER).data)]
+        exp_list = [self.parse_func_body_exp(False)]
+        return ast.LocalDeclStat(var_list, exp_list)
+
+    # local namelist [‘=’ explist] 
+    def parse_local_var_decl_stat(self):
+        var_list = self.parse_name_list()
+        exp_list = []
+        if self.lex.look_ahead().kind == lexer.TokenKind.OP_ASSIGN:
+            self.lex.next_token_of_kind(lexer.TokenKind.OP_ASSIGN)
+            exp_list = self.parse_exp_list()
+        return ast.LocalDeclStat(var_list, exp_list)
 
     # var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name
     # functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
@@ -365,8 +441,8 @@ class Parser:
     # var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name
     def finsh_assign_stat(self, first_var):
         var_list = [first_var]
-        look_token = self.lex.look_ahead()
-        while look_token.kind == lexer.TokenKind.SEP_COMMA:
+        while self.lex.look_ahead().kind == lexer.TokenKind.SEP_COMMA:
+            self.lex.next_token()
             var_list.append(self.check_var(self.parse_prefix_exp()))
         self.lex.next_token_of_kind(lexer.TokenKind.OP_ASSIGN)
         exp_list = self.parse_exp_list()
