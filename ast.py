@@ -75,10 +75,12 @@ class LocalDeclStat(AstNode):
 
     def print(self, pre_num=0):
         super().print(pre_num)
+        print(super().get_prefix(pre_num+1)+'<val_list>')
         for it in self.val_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
+        print(super().get_prefix(pre_num+1)+'<exp_list>')
         for it in self.exp_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
 
 class WhileStat(AstNode):
     def __init__(self, exp, block, name='while_stat'):
@@ -111,10 +113,12 @@ class IfStat(AstNode):
 
     def print(self, pre_num=0):
         super().print(pre_num)
+        print(super().get_prefix(pre_num+1)+'<exp_list>')
         for it in self.exp_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
+        print(super().get_prefix(pre_num+1)+'<block_list>')
         for it in self.block_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
 
 class ForNumStat(AstNode):
     def __init__(self, var_name, init_exp, limit_exp, step_exp, block, name = 'for_num_stat'):
@@ -143,10 +147,12 @@ class ForInStat(AstNode):
     
     def print(self, pre_num=0):
         super().print(pre_num)
+        print(super().get_prefix(pre_num+1)+'<var_list>')
         for it in self.name_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
+        print(super().get_prefix(pre_num+1)+'<exp_list>')
         for it in self.exp_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
         self.block.print(pre_num+1)
 
 class AssignStat(AstNode):
@@ -157,10 +163,12 @@ class AssignStat(AstNode):
 
     def print(self, pre_num=0):
         super().print(pre_num)
+        print(super().get_prefix(pre_num+1)+'<var_list>')
         for it in self.var_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
+        print(super().get_prefix(pre_num+1)+'<exp_list>')
         for it in self.exp_list:
-            it.print(pre_num+1)
+            it.print(pre_num+2)
 
 
 class RetStat(AstNode):
