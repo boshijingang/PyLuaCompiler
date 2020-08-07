@@ -1,5 +1,6 @@
 import lexer
 from parser import Parser
+from code import CodeGenerator
 
 def main():
     src_code = """
@@ -47,7 +48,9 @@ def main():
     #     token = lex.next_token()
     parser = Parser(lex)
     ast = parser.parse()
-    ast.print()
+    # ast.print()
+    code_gen = CodeGenerator()
+    main_proto = code_gen.gen_entry_proto(ast)
     #with open('test/factorial.lua') as f:
     #    src_code = f.read()
     #for token in lua_lexer.lexer(src_code):
