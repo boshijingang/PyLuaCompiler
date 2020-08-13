@@ -50,7 +50,8 @@ def main():
     ast = parser.parse()
     # ast.print()
     code_gen = CodeGenerator()
-    main_proto = code_gen.gen_entry_proto(ast)
+    main_proto = code_gen.gen_main_proto(ast)
+    main_proto.dump()
     #with open('test/factorial.lua') as f:
     #    src_code = f.read()
     #for token in lua_lexer.lexer(src_code):
